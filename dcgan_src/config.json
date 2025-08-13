@@ -1,62 +1,62 @@
 {
   "dataset": {
-    "base_path": "gs://mg-pollub-master-thesis-gans-bucket/dataset",
+    "base_path": "../dataset",
     "spectrograms_path": "spectrograms/",
     "spectrograms_metadata": "spectrograms-metadata.csv"
   },
 
   "model": {
-    "latent_dim": 100,
-    "features_g": 128,
-    "features_d": 128,
+    "latent_dim": 128,
+    "features_g": 256,
+    "features_d": 256,
     "image_size": 128,
     "channels": 1
   },
 
   "training": {
-    "batch_size": 128,
-    "epochs": 500,
-    "learning_rate": 0.0002,
+    "batch_size": 384,
+    "epochs": 800,
+    "learning_rate": 0.0001,
     "beta1": 0.5
   },
 
   "metrics_and_checkpoints": {
-    "csv_write_frequency": 100,
-    "detailed_logging_frequency": 150,
-    "emergency_checkpoint_frequency": 200,
-    "milestone_checkpoint_frequency": 1000,
-    "milestone_epoch_frequency": 15,
-    "emergency_buffer_size": 5,
-    "image_samples_per_checkpoint": 10,
-    "best_model_improvement_threshold": 0.01,
-    "key_epochs_first": 20,
-    "key_epochs_last": 20
+    "csv_write_frequency": 20,
+    "detailed_logging_frequency": 40,
+    "emergency_checkpoint_frequency": 80,
+    "milestone_checkpoint_frequency": 150,
+    "milestone_epoch_frequency": 25,
+    "emergency_buffer_size": 12,
+    "image_samples_per_checkpoint": 20,
+    "best_model_improvement_threshold": 0.003,
+    "key_epochs_first": 50,
+    "key_epochs_last": 100
   },
 
   "logging": {
     "log_level": "INFO",
     "log_to_file": true,
     "log_to_console": false,
-    "max_log_size_mb": 10
+    "max_log_size_mb": 50
   },
 
   "hardware": {
-    "device": "auto",
-    "num_workers": 6
+    "device": "cuda",
+    "num_workers": 16
   },
 
   "convergence": {
     "enabled": true,
-    "min_iterations": 2000,
-    "check_frequency": 100,
-    "patience": 800,
-    "min_improvement": 0.00008,
-    "loss_explosion_threshold": 150.0,
-    "grad_norm_threshold": 2500.0
+    "min_iterations": 4000,
+    "check_frequency": 50,
+    "patience": 1200,
+    "min_improvement": 0.00005,
+    "loss_explosion_threshold": 200.0,
+    "grad_norm_threshold": 5000.0
   },
 
   "output": {
-    "base_output_dir": "gs://mg-pollub-master-thesis-gans-bucket/dcgan_output",
+    "base_output_dir": "./dcgan_output",
     "models_dir": "models",
     "samples_dir": "samples",
     "metrics_dir": "metrics"

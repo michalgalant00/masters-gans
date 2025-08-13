@@ -1,0 +1,71 @@
+{
+  "dataset": {
+    "base_path": "gs://mg-pollub-master-thesis-gans-bucket/dataset",
+    "files_path": "files-wav/",
+    "metadata_file": "metadata.csv",
+    "spectrograms_path": "spectrograms/",
+    "spectrograms_metadata": "spectrograms-metadata.csv"
+  },
+
+  "model": {
+    "latent_dim": 100,
+    "model_dim": 128,
+    "kernel_len": 25
+  },
+
+  "training": {
+    "batch_size": 128,
+    "epochs": 5000,
+    "learning_rate": 0.0001,
+    "n_critic": 5,
+    "gp_weight": 10.0
+  },
+
+  "audio": {
+    "sample_rate": 22050,
+    "audio_length_seconds": 2.0,
+    "audio_length_samples": 44100
+  },
+
+  "metrics_and_checkpoints": {
+    "csv_write_frequency": 150,
+    "detailed_logging_frequency": 200,
+    "emergency_checkpoint_frequency": 300,
+    "milestone_checkpoint_frequency": 1500,
+    "milestone_epoch_frequency": 30,
+    "emergency_buffer_size": 3,
+    "audio_samples_per_checkpoint": 10,
+    "best_model_improvement_threshold": 0.02,
+    "key_epochs_first": 20,
+    "key_epochs_last": 20
+  },
+
+  "logging": {
+    "log_level": "INFO",
+    "log_to_file": true,
+    "log_to_console": false,
+    "max_log_size_mb": 10
+  },
+
+  "hardware": {
+    "device": "auto",
+    "num_workers": 6
+  },
+
+  "convergence": {
+    "enabled": true,
+    "min_iterations": 6000,
+    "check_frequency": 300,
+    "patience": 1500,
+    "min_improvement": 0.00005,
+    "loss_explosion_threshold": 600.0,
+    "grad_norm_threshold": 6000.0
+  },
+
+  "output": {
+    "base_output_dir": "gs://mg-pollub-master-thesis-gans-bucket/wavegan_output",
+    "models_dir": "models",
+    "samples_dir": "samples",
+    "metrics_dir": "metrics"
+  }
+}

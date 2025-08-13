@@ -1,6 +1,6 @@
 {
   "dataset": {
-    "base_path": "gs://mg-pollub-master-thesis-gans-bucket/dataset",
+    "base_path": "../dataset",
     "files_path": "files-wav/",
     "metadata_file": "metadata.csv",
     "spectrograms_path": "spectrograms/",
@@ -8,14 +8,14 @@
   },
 
   "model": {
-    "latent_dim": 100,
-    "model_dim": 128,
+    "latent_dim": 128,
+    "model_dim": 256,
     "kernel_len": 25
   },
 
   "training": {
-    "batch_size": 128,
-    "epochs": 5000,
+    "batch_size": 96,
+    "epochs": 8000,
     "learning_rate": 0.0001,
     "n_critic": 5,
     "gp_weight": 10.0
@@ -28,42 +28,42 @@
   },
 
   "metrics_and_checkpoints": {
-    "csv_write_frequency": 150,
-    "detailed_logging_frequency": 200,
-    "emergency_checkpoint_frequency": 300,
-    "milestone_checkpoint_frequency": 1500,
-    "milestone_epoch_frequency": 30,
-    "emergency_buffer_size": 3,
-    "audio_samples_per_checkpoint": 10,
-    "best_model_improvement_threshold": 0.02,
-    "key_epochs_first": 20,
-    "key_epochs_last": 20
+    "csv_write_frequency": 40,
+    "detailed_logging_frequency": 80,
+    "emergency_checkpoint_frequency": 200,
+    "milestone_checkpoint_frequency": 400,
+    "milestone_epoch_frequency": 40,
+    "emergency_buffer_size": 10,
+    "audio_samples_per_checkpoint": 20,
+    "best_model_improvement_threshold": 0.005,
+    "key_epochs_first": 100,
+    "key_epochs_last": 200
   },
 
   "logging": {
     "log_level": "INFO",
     "log_to_file": true,
     "log_to_console": false,
-    "max_log_size_mb": 10
+    "max_log_size_mb": 50
   },
 
   "hardware": {
-    "device": "auto",
-    "num_workers": 6
+    "device": "cuda",
+    "num_workers": 16
   },
 
   "convergence": {
     "enabled": true,
-    "min_iterations": 6000,
+    "min_iterations": 12000,
     "check_frequency": 300,
-    "patience": 1500,
-    "min_improvement": 0.00005,
-    "loss_explosion_threshold": 600.0,
-    "grad_norm_threshold": 6000.0
+    "patience": 2000,
+    "min_improvement": 0.00003,
+    "loss_explosion_threshold": 1000.0,
+    "grad_norm_threshold": 10000.0
   },
 
   "output": {
-    "base_output_dir": "gs://mg-pollub-master-thesis-gans-bucket/wavegan_output",
+    "base_output_dir": "./wavegan_output",
     "models_dir": "models",
     "samples_dir": "samples",
     "metrics_dir": "metrics"
