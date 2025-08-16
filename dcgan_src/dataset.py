@@ -12,16 +12,18 @@ import numpy as np
 from PIL import Image
 import os
 from torch.utils.data import Dataset
-from .config import logger, log_tensor_stats, IMAGE_SIZE, CHANNELS
+
+# Remove config import - will use passed parameters instead
 
 class SpectrogramDataset(Dataset):
     """Dataset class for loading and preprocessing spectrogram images"""
     
-    def __init__(self, spectrograms_dir, metadata_file, image_size=IMAGE_SIZE):
+    def __init__(self, spectrograms_dir, metadata_file, image_size=64, max_files=None):
         self.spectrograms_dir = spectrograms_dir
         self.image_size = image_size
         self.spectrogram_files = []
         self.use_full_path = False  # Default to using relative paths
+        self.max_files = max_files  # Limit number of files for testing
         
         # Check if metadata file exists and try to use it
         if os.path.exists(metadata_file):
@@ -76,10 +78,15 @@ class SpectrogramDataset(Dataset):
         
         print(f"Found {len(self.spectrogram_files)} spectrogram files total")
         
+        # Apply max_files limit if specified (for testing)
+        if self.max_files is not None and len(self.spectrogram_files) > self.max_files:
+            print(f"🔄 Limiting dataset to {self.max_files} files for testing (from {len(self.spectrogram_files)})")
+            self.spectrogram_files = self.spectrogram_files[:self.max_files]
+        
         if len(self.spectrogram_files) == 0:
             raise ValueError(f"No spectrogram files found in {spectrograms_dir}")
             
-        logger.info(f"SpectrogramDataset initialized with {len(self.spectrogram_files)} files")
+        print(f"SpectrogramDataset initialized with {len(self.spectrogram_files)} files")
     
     def _scan_spectrogram_directories(self):
         """Scan directories for spectrogram image files"""
@@ -241,7 +248,7 @@ class SpectrogramDataset(Dataset):
 class DummySpectrogramDataset(Dataset):
     """Dummy dataset for testing when real spectrograms are not available"""
     
-    def __init__(self, size=100, image_size=IMAGE_SIZE, channels=CHANNELS):
+    def __init__(self, size=100, image_size=64, channels=1):
         self.size = size
         self.image_size = image_size
         self.channels = channels

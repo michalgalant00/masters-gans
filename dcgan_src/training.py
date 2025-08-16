@@ -12,16 +12,12 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import time
+import logging
 from tqdm import tqdm
 import os
 from torch.utils.data import DataLoader
 
-from .config import (
-    DEVICE, LATENT_DIM, BATCH_SIZE, EPOCHS, LEARNING_RATE, BETA1,
-    IMAGE_SIZE, CHANNELS, logger, log_tensor_stats, check_and_rotate_log,
-    CONFIG_MODE, DETAILED_LOGGING_FREQUENCY, DATASET_SPECTROGRAMS,
-    DATASET_SPECTROGRAMS_METADATA
-)
+# Remove config import - using DCGANConfig object instead
 from .dataset import SpectrogramDataset, DummySpectrogramDataset, create_dataloader
 from .generator import DCGANGenerator, weights_init_generator
 from .discriminator import DCGANDiscriminator, weights_init_discriminator
@@ -31,6 +27,9 @@ from .analytics import TrainingAnalyzer
 from .convergence_detector import ConvergenceDetector, ConvergenceStatus
 from .advanced_metrics import calculate_fid_is_scores, get_metrics_calculator
 from .advanced_monitoring import get_resource_monitor, cleanup_resource_monitor
+
+# Configure logger for training
+logger = logging.getLogger(__name__)
 
 class DCGANTrainer:
     """Complete training pipeline for DCGAN with metrics and checkpoints"""
@@ -45,6 +44,7 @@ class DCGANTrainer:
         if config:
             model_config = config.get_model_config()
             training_config = config.get_training_config()
+            metrics_config = config.get_metrics_config()
             
             self.latent_dim = model_config['latent_dim']
             self.image_size = model_config['image_size']
@@ -57,17 +57,22 @@ class DCGANTrainer:
             self.learning_rate = training_config['learning_rate']
             self.beta1 = training_config['beta1']
             
+            self.detailed_logging_frequency = metrics_config['detailed_logging_frequency']
+            
             self.device = config.device
         else:
-            # Fallback to global constants
-            self.latent_dim = LATENT_DIM
-            self.image_size = IMAGE_SIZE
-            self.channels = CHANNELS
-            self.batch_size = BATCH_SIZE
-            self.epochs = EPOCHS
-            self.learning_rate = LEARNING_RATE
-            self.beta1 = BETA1
-            self.device = DEVICE
+            # Basic defaults if no config provided
+            self.latent_dim = 100
+            self.image_size = 64
+            self.channels = 1
+            self.features_g = 64
+            self.features_d = 64
+            self.batch_size = 64
+            self.epochs = 5
+            self.learning_rate = 0.0002
+            self.beta1 = 0.5
+            self.detailed_logging_frequency = 100
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Initialize models with configuration values
         self.generator = DCGANGenerator(
@@ -100,14 +105,13 @@ class DCGANTrainer:
         # Initialize loss function
         self.criterion = nn.BCELoss()
         
-        # Initialize metrics and checkpoint systems - FIXED: use consistent output_dir like WaveGAN
-        if config and hasattr(config, 'output_dir'):
-            # Use config-based paths (consistent with WaveGAN)
-            # DCGANConfig stores the actual config in .config attribute
+        # Initialize metrics and checkpoint systems - use unified config directories
+        if config:
+            # Use config-based paths with normalized directories
             config_dict = config.config if hasattr(config, 'config') else (config.to_dict() if hasattr(config, 'to_dict') else config.__dict__)
-            self.metrics = MetricsCollector(output_dir=config.output_dir, config=config_dict)
-            self.checkpoint_manager = CheckpointManager(checkpoint_dir=os.path.join(config.output_dir, "checkpoints"))
-            self.analyzer = TrainingAnalyzer(output_dir=config.output_dir)
+            self.metrics = MetricsCollector(output_dir=config.metrics_dir, config=config_dict)
+            self.checkpoint_manager = CheckpointManager(checkpoint_dir=config.checkpoints_dir)
+            self.analyzer = TrainingAnalyzer(output_dir=config.metrics_dir)
         else:
             # Fallback to legacy mode - use output_dcgan
             self.metrics = MetricsCollector(output_dir="output_dcgan")
@@ -177,7 +181,7 @@ class DCGANTrainer:
     def save_experiment_config(self):
         """Save experiment configuration and model details"""
         config_data = {
-            'mode': CONFIG_MODE,
+            'mode': 'config',
             'hyperparameters': {
                 'latent_dim': self.latent_dim,
                 'batch_size': self.batch_size,
@@ -199,7 +203,7 @@ class DCGANTrainer:
                 'dataset_metadata': self.dataset_metadata
             },
             'system_info': {
-                'device': str(DEVICE),
+                'device': str(self.device),
                 'cuda_available': torch.cuda.is_available(),
                 'cuda_device_name': torch.cuda.get_device_name() if torch.cuda.is_available() else None
             }
@@ -228,10 +232,12 @@ class DCGANTrainer:
         else:
             try:
                 # Try to load real spectrogram dataset
+                max_files = getattr(self.config, 'max_files_limit', None)
                 dataset = SpectrogramDataset(
                     self.dataset_spectrograms,
                     self.dataset_metadata,
-                    image_size=self.image_size
+                    image_size=self.image_size,
+                    max_files=max_files
                 )
                 print(f"✅ Loaded real spectrogram dataset with {len(dataset)} images")
                 
@@ -239,7 +245,7 @@ class DCGANTrainer:
                 print(f"⚠️  Could not load real dataset: {e}")
                 print("🔄 Using dummy dataset for testing...")
                 dataset = DummySpectrogramDataset(
-                    size=100 if CONFIG_MODE == "TESTING" else 1000,
+                    size=100,  # Use fixed size for simplicity
                     image_size=self.image_size,
                     channels=self.channels
                 )
@@ -261,7 +267,7 @@ class DCGANTrainer:
     
     def train(self):
         """Main training loop"""
-        print(f"🚀 Starting DCGAN training - {CONFIG_MODE} mode")
+        print("🚀 Starting DCGAN training - config mode")
         print(f"🎯 Target: {self.epochs} epochs, {self.batch_size} batch size")
         print("="*60)
         
@@ -361,6 +367,9 @@ class DCGANTrainer:
                 
                 # Check convergence status
                 if convergence_status in [ConvergenceStatus.DIVERGED, ConvergenceStatus.EARLY_STOP]:
+                    # Log to console with tqdm.write for progress bar compatibility
+                    epoch_iterator.write(f"⏹️  Training stopped due to convergence: {convergence_status.value}")
+                    # Log to file
                     logger.warning(f"Training stopped due to convergence: {convergence_status.value}")
                     epoch_iterator.close()
                     break
@@ -378,7 +387,7 @@ class DCGANTrainer:
                     d_real_score=d_real_score,
                     d_fake_score=d_fake_score,
                     batch_size=batch_size,
-                    image_size=IMAGE_SIZE,
+                    image_size=self.image_size,
                     iteration_time=iteration_time
                 )
                 
@@ -391,20 +400,28 @@ class DCGANTrainer:
                 })
                 
                 # Detailed logging
-                if self.global_iteration % DETAILED_LOGGING_FREQUENCY == 0:
+                if self.global_iteration % self.detailed_logging_frequency == 0:
+                    # Log to console with tqdm.write for progress bar compatibility
+                    epoch_iterator.write(f"Iter {self.global_iteration}: G_loss={loss_g.item():.4f}, "
+                                       f"D_loss={loss_d.item():.4f}, D(real)={d_real_score:.3f}, "
+                                       f"D(fake)={d_fake_score:.3f}")
+                    
+                    # Log detailed stats to file
                     logger.info(f"Iter {self.global_iteration}: G_loss={loss_g.item():.4f}, "
                                f"D_loss={loss_d.item():.4f}, D(real)={d_real_score:.3f}, "
                                f"D(fake)={d_fake_score:.3f}")
                     
                     # Log tensor stats for debugging
-                    log_tensor_stats("real_data", real_data, self.global_iteration)
-                    log_tensor_stats("fake_data", fake_data, self.global_iteration)
+                    if self.config and hasattr(self.config, 'log_tensor_stats'):
+                        self.config.log_tensor_stats("real_data", real_data, self.global_iteration)
+                        self.config.log_tensor_stats("fake_data", fake_data, self.global_iteration)
                 
                 # NOTE: Checkpoints are handled per EPOCH, not per iteration
                 # See handle_checkpoints() call after epoch completion
                 
                 # Rotate log if needed
-                check_and_rotate_log()
+                if self.config and hasattr(self.config, 'check_and_rotate_log'):
+                    self.config.check_and_rotate_log()
             
             # End of epoch
             epoch_duration = (time.time() - epoch_start_time) / 60  # minutes
@@ -453,8 +470,8 @@ class DCGANTrainer:
                 inception_score=0.0,  # TODO: Implement IS calculation
                 convergence_indicator=self._calculate_convergence_indicator(),
                 training_stability_score=self._calculate_stability_score(),
-                batch_size=BATCH_SIZE,
-                sequence_length=IMAGE_SIZE,  # Using image_size as sequence_length for DCGAN
+                batch_size=self.batch_size,
+                sequence_length=self.image_size,  # Using image_size as sequence_length for DCGAN
                 total_iterations_in_epoch=len(dataloader),
                 # ADDED RESOURCE MONITORING:
                 resource_stats=resource_stats
@@ -476,9 +493,14 @@ class DCGANTrainer:
             print(f"Epoch [{epoch+1}/{self.epochs}] completed in {epoch_duration:.2f}min - "
                   f"Avg G_loss: {avg_g_loss:.4f}, Avg D_loss: {avg_d_loss:.4f}")
         
-        # Training completed
-        total_duration = (time.time() - total_start_time) / 3600  # hours
-        print(f"\n🎉 Training completed in {total_duration:.2f} hours!")
+        # Training completed - show duration in appropriate units
+        total_duration_seconds = time.time() - total_start_time
+        if total_duration_seconds < 3600:  # Less than 1 hour, show in minutes
+            total_duration_minutes = total_duration_seconds / 60
+            print(f"\n🎉 Training completed in {total_duration_minutes:.2f} minutes!")
+        else:  # Show in hours
+            total_duration_hours = total_duration_seconds / 3600
+            print(f"\n🎉 Training completed in {total_duration_hours:.2f} hours!")
         
         # Stop resource monitoring and save data
         self.resource_monitor.stop_monitoring()
@@ -813,14 +835,19 @@ class DCGANTrainer:
         import glob
         
         # Look for sample files in samples directory using config
-        from .config import SAMPLES_DIR
-        if not os.path.exists(SAMPLES_DIR):
+        if self.config and hasattr(self.config, 'samples_dir'):
+            samples_dir = self.config.samples_dir
+        else:
+            # Fallback - use default samples dir
+            samples_dir = "output_dcgan/samples"
+            
+        if not os.path.exists(samples_dir):
             return []
         
         # Find latest sample files - prioritize .npy files
         patterns = [
-            os.path.join(SAMPLES_DIR, "epoch_*.npy"),  # Primary: numpy arrays
-            os.path.join(SAMPLES_DIR, "epoch_*.png")   # Secondary: images
+            os.path.join(samples_dir, "epoch_*.npy"),  # Primary: numpy arrays
+            os.path.join(samples_dir, "epoch_*.png")   # Secondary: images
         ]
         
         sample_files = []

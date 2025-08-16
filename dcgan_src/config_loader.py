@@ -53,24 +53,30 @@ class DCGANConfig:
         else:
             self.device = torch.device(device_config)
         
-        # Compute dataset paths
+        # Compute dataset paths - normalize separators
         dataset_config = self.config['dataset']
-        self.dataset_base_path = dataset_config['base_path']
-        self.dataset_spectrograms = os.path.join(self.dataset_base_path, dataset_config['spectrograms_path'])
-        self.dataset_spectrograms_metadata = os.path.join(self.dataset_base_path, dataset_config['spectrograms_metadata'])
+        self.dataset_base_path = os.path.normpath(dataset_config['base_path'])
+        self.dataset_spectrograms = os.path.normpath(os.path.join(self.dataset_base_path, dataset_config['spectrograms_path']))
+        self.dataset_spectrograms_metadata = os.path.normpath(os.path.join(self.dataset_base_path, dataset_config['spectrograms_metadata']))
         
-        # Setup output directories - FIXED: use config value or fallback to output_dcgan
+        # Dataset limitations for testing
+        self.max_files_limit = dataset_config.get('max_files_limit', None)
+        
+        # Setup output directories - normalize paths and ensure consistency
         output_config = self.config['output']
-        self.base_output_dir = output_config.get('base_output_dir', "output_dcgan")  # Use config value or fallback
-        self.output_dir = self.base_output_dir  # ADDED: compatibility with WaveGAN interface
-        self.models_dir = os.path.join(self.base_output_dir, output_config['models_dir'])
-        self.samples_dir = os.path.join(self.base_output_dir, output_config['samples_dir'])
-        self.metrics_dir = os.path.join(self.base_output_dir, output_config['metrics_dir'])
+        base_dir = output_config.get('base_output_dir', "output_dcgan")
+        self.base_output_dir = os.path.normpath(base_dir)
+        self.output_dir = self.base_output_dir  # Compatibility with WaveGAN interface
+        self.models_dir = os.path.normpath(os.path.join(self.base_output_dir, output_config['models_dir']))
+        self.samples_dir = os.path.normpath(os.path.join(self.base_output_dir, output_config['samples_dir']))
+        self.metrics_dir = os.path.normpath(os.path.join(self.base_output_dir, output_config['metrics_dir']))
+        self.checkpoints_dir = os.path.normpath(os.path.join(self.base_output_dir, 'checkpoints'))
         
         # Create output directories
         os.makedirs(self.models_dir, exist_ok=True)
         os.makedirs(self.samples_dir, exist_ok=True)
         os.makedirs(self.metrics_dir, exist_ok=True)
+        os.makedirs(self.checkpoints_dir, exist_ok=True)
     
     def _setup_logging(self):
         """Konfiguruje system logowania"""

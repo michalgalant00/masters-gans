@@ -39,6 +39,9 @@ import sys
 import argparse
 from typing import Optional
 
+# Suppress automatic config prints during import
+os.environ['DCGAN_SUPPRESS_CONFIG_PRINT'] = '1'
+
 # Add the dcgan_src directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'dcgan_src'))
 

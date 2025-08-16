@@ -8,12 +8,13 @@ Implements the standard DCGAN discriminator with convolutional layers.
 
 import torch
 import torch.nn as nn
-from .config import FEATURES_D, IMAGE_SIZE, CHANNELS
+
+# Remove config import - will use passed parameters instead
 
 class DCGANDiscriminator(nn.Module):
     """DCGAN Discriminator for spectrogram classification"""
     
-    def __init__(self, features_d=FEATURES_D, channels=CHANNELS, image_size=IMAGE_SIZE):
+    def __init__(self, features_d=64, channels=1, image_size=64):
         super(DCGANDiscriminator, self).__init__()
         
         self.features_d = features_d
@@ -133,8 +134,8 @@ def weights_init_discriminator(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-def test_discriminator(features_d=FEATURES_D, image_size=IMAGE_SIZE, 
-                      channels=CHANNELS, device=None):
+def test_discriminator(features_d=64, image_size=64,
+                      channels=1, device=None):
     """Test discriminator with random input"""
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -169,14 +170,14 @@ def test_discriminator(features_d=FEATURES_D, image_size=IMAGE_SIZE,
     print("✓ Discriminator test passed!")
     return discriminator
 
-def test_discriminator_features():
+def test_discriminator_features(features_d=64, channels=1, image_size=64):
     """Test feature extraction functionality"""
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    discriminator = DCGANDiscriminator().to(device)
+    discriminator = DCGANDiscriminator(features_d=features_d, channels=channels, image_size=image_size).to(device)
     
     # Test feature extraction
     batch_size = 2
-    test_input = torch.randn(batch_size, CHANNELS, IMAGE_SIZE, IMAGE_SIZE, device=device)
+    test_input = torch.randn(batch_size, channels, image_size, image_size, device=device)
     
     # Get all feature maps
     features = discriminator.get_feature_maps(test_input)

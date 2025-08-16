@@ -1,35 +1,36 @@
 {
   "dataset": {
     "base_path": "../01_dataset_prep/dataset-processed/final",
-    "spectrograms_path": "spectrograms/",
+    "spectrograms_path": "spectrograms",
     "spectrograms_metadata": "spectrograms-metadata.csv",
     "use_dummy_data": false,
-    "dummy_dataset_size": 1000
+    "dummy_dataset_size": 100,
+    "max_files_limit": 50
   },
 
   "model": {
-    "latent_dim": 50,
-    "features_g": 32,
-    "features_d": 32,
+    "latent_dim": 32,
+    "features_g": 16,
+    "features_d": 16,
     "image_size": 64,
     "channels": 1
   },
 
   "training": {
-    "batch_size": 8,
-    "epochs": 10,
+    "batch_size": 4,
+    "epochs": 3,
     "learning_rate": 0.0002,
     "beta1": 0.5
   },
 
   "metrics_and_checkpoints": {
     "csv_write_frequency": 1,
-    "detailed_logging_frequency": 1,
+    "detailed_logging_frequency": 5,
     "emergency_checkpoint_frequency": 50,
     "milestone_checkpoint_frequency": 200,
     "milestone_epoch_frequency": 2,
     "emergency_buffer_size": 3,
-    "image_samples_per_checkpoint": 5,
+    "image_samples_per_checkpoint": 2,
     "best_model_improvement_threshold": 0.05,
     "key_epochs_first": 1,
     "key_epochs_last": 1
@@ -61,16 +62,16 @@
   },
 
   "advanced_metrics": {
-    "enabled": true,
-    "calculate_fid": true,
-    "calculate_is": true,
+    "enabled": false,
+    "calculate_fid": false,
+    "calculate_is": false,
     "fid_frequency": 5,
     "is_frequency": 5,
     "num_samples_for_metrics": 200
   },
 
   "output": {
-    "base_output_dir": "output_dcgan",
+    "base_output_dir": "output_dcgan_test",
     "models_dir": "models",
     "samples_dir": "samples",
     "metrics_dir": "metrics"

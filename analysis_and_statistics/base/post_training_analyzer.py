@@ -36,12 +36,17 @@ class PostTrainingAnalyzer:
     def __init__(self, output_analysis_dir: str = "output_analysis"):
         self.output_analysis_dir = output_analysis_dir
         
-        # Look for data in the main output directory (where training saves data)
-        if os.path.exists(os.path.join("output", "epochs_statistics")):
+        # Look for data in the metrics subdirectory (where training actually saves data)
+        metrics_dir = os.path.join(output_analysis_dir, "metrics")
+        if os.path.exists(os.path.join(metrics_dir, "epochs_statistics")):
+            self.epochs_stats_dir = os.path.join(metrics_dir, "epochs_statistics")
+            self.single_epochs_dir = os.path.join(metrics_dir, "single_epochs_statistics")
+        elif os.path.exists(os.path.join("output", "epochs_statistics")):
+            # Legacy fallback for old structure
             self.epochs_stats_dir = os.path.join("output", "epochs_statistics")
             self.single_epochs_dir = os.path.join("output", "single_epochs_statistics")
         else:
-            # Fallback to old structure
+            # Direct fallback - create expected structure
             self.epochs_stats_dir = os.path.join(output_analysis_dir, "epochs_statistics")
             self.single_epochs_dir = os.path.join(output_analysis_dir, "single_epochs_statistics")
             

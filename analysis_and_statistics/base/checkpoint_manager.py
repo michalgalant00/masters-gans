@@ -191,59 +191,69 @@ class CheckpointManagerBase(ABC):
         - 5 sample pliki audio/image (sample_1.wav/png, sample_2.wav/png, ...)
         """
         
+        # Initialize variables for cleanup
+        import shutil
+        project_temp_dir = None
+        
         try:
-            # Create temporary directory for checkpoint content
-            import tempfile
-            with tempfile.TemporaryDirectory() as temp_dir:
-                
-                # Save model states
-                generator_path = os.path.join(temp_dir, "generator.pt")
-                discriminator_path = os.path.join(temp_dir, "discriminator.pt")
-                torch.save(generator.state_dict(), generator_path)
-                torch.save(discriminator.state_dict(), discriminator_path)
-                
-                # Save optimizer states
-                g_opt_path = os.path.join(temp_dir, "g_opt.pt")
-                d_opt_path = os.path.join(temp_dir, "d_opt.pt")
-                torch.save(optimizer_g.state_dict(), g_opt_path)
-                torch.save(optimizer_d.state_dict(), d_opt_path)
+            # Create temporary directory for checkpoint content - use project temp dir
+            project_temp_dir = os.path.join(self.checkpoint_dir, "temp_checkpoint")
+            os.makedirs(project_temp_dir, exist_ok=True)
+            
+            # Clean up old temp files
+            if os.path.exists(project_temp_dir):
+                shutil.rmtree(project_temp_dir)
+            os.makedirs(project_temp_dir, exist_ok=True)
+            
+            # Save model states
+            generator_path = os.path.join(project_temp_dir, "generator.pt")
+            discriminator_path = os.path.join(project_temp_dir, "discriminator.pt")
+            torch.save(generator.state_dict(), generator_path)
+            torch.save(discriminator.state_dict(), discriminator_path)
+            
+            # Save optimizer states
+            g_opt_path = os.path.join(project_temp_dir, "g_opt.pt")
+            d_opt_path = os.path.join(project_temp_dir, "d_opt.pt")
+            torch.save(optimizer_g.state_dict(), g_opt_path)
+            torch.save(optimizer_d.state_dict(), d_opt_path)
                 
                 # Save training context
-                training_context = {
-                    'epoch': epoch,
-                    'iteration': iteration,
-                    'generator_loss': generator_loss,
-                    'discriminator_loss': discriminator_loss,
-                    'model_type': self.model_type,
-                    'checkpoint_type': checkpoint_type,
-                    'timestamp': datetime.now().isoformat(),
-                    **domain_specific_data
-                }
+            # Save training context
+            training_context = {
+                'epoch': epoch,
+                'iteration': iteration,
+                'generator_loss': generator_loss,
+                'discriminator_loss': discriminator_loss,
+                'model_type': self.model_type,
+                'checkpoint_type': checkpoint_type,
+                'timestamp': datetime.now().isoformat(),
+                **domain_specific_data
+            }
+            
+            context_path = os.path.join(project_temp_dir, "training_context.json")
+            with open(context_path, 'w') as f:
+                json.dump(training_context, f, indent=2, default=str)
+            
+            # Save RNG states
+            rng_states = {
+                'python_random_state': random.getstate(),
+                'numpy_random_state': np.random.get_state(),
+                'torch_random_state': torch.get_rng_state()
+            }
+            
+            if torch.cuda.is_available():
+                rng_states['torch_cuda_random_state'] = torch.cuda.get_rng_state()
+            
+            rng_path = os.path.join(project_temp_dir, "rng_states.pt")
+            torch.save(rng_states, rng_path)
+            
+            # Generate 5 sample files (domain-specific)
+            sample_paths = self._generate_checkpoint_samples(
+                generator, epoch, iteration, checkpoint_type, project_temp_dir
+            )
                 
-                context_path = os.path.join(temp_dir, "training_context.json")
-                with open(context_path, 'w') as f:
-                    json.dump(training_context, f, indent=2, default=str)
-                
-                # Save RNG states
-                rng_states = {
-                    'python_random_state': random.getstate(),
-                    'numpy_random_state': np.random.get_state(),
-                    'torch_random_state': torch.get_rng_state()
-                }
-                
-                if torch.cuda.is_available():
-                    rng_states['torch_cuda_random_state'] = torch.cuda.get_rng_state()
-                
-                rng_path = os.path.join(temp_dir, "rng_states.pt")
-                torch.save(rng_states, rng_path)
-                
-                # Generate 5 sample files (domain-specific)
-                sample_paths = self._generate_checkpoint_samples(
-                    generator, epoch, iteration, checkpoint_type, temp_dir
-                )
-                
-                # Create compressed tar archive
-                with tarfile.open(checkpoint_path, 'w:gz') as tar:
+            # Create compressed tar archive
+            with tarfile.open(checkpoint_path, 'w:gz') as tar:
                     tar.add(generator_path, arcname="generator.pt")
                     tar.add(discriminator_path, arcname="discriminator.pt")
                     tar.add(g_opt_path, arcname="g_opt.pt")
@@ -267,6 +277,10 @@ class CheckpointManagerBase(ABC):
         except Exception as e:
             print(f"❌ Error saving checkpoint content: {e}")
             raise e
+        finally:
+            # Clean up project temp directory
+            if project_temp_dir and os.path.exists(project_temp_dir):
+                shutil.rmtree(project_temp_dir)
     
     def load_checkpoint(self, checkpoint_path: str, generator, discriminator,
                        optimizer_g=None, optimizer_d=None, 

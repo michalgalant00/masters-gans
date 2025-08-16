@@ -27,12 +27,8 @@ class ImageCheckpointManager(CheckpointManagerBase):
                          num_samples: Optional[int] = None) -> List[str]:
         """Generate and save image samples for checkpoint"""
         if num_samples is None:
-            # Import here to avoid circular dependency
-            try:
-                from dcgan_src.config import IMAGE_SAMPLES_PER_CHECKPOINT
-                num_samples = IMAGE_SAMPLES_PER_CHECKPOINT
-            except ImportError:
-                num_samples = 9  # Default fallback (3x3 grid)
+            # Use default value instead of importing from config
+            num_samples = 5  # Default fallback - consistent with current usage
         
         # Ensure num_samples is not None
         if num_samples is None:
@@ -46,9 +42,9 @@ class ImageCheckpointManager(CheckpointManagerBase):
             z_batch = torch.randn(num_samples, latent_dim, 1, 1).to(device)
             images_batch = generator(z_batch)
             
-            # Save batch as numpy array (.npy format)
+            # Save batch as numpy array (.npy format) - use samples directory instead of temp
             npy_filename = f"samples_batch_{num_samples}.npy"
-            npy_filepath = os.path.join(self.checkpoint_dir, "temp", npy_filename)
+            npy_filepath = os.path.join(os.path.dirname(self.checkpoint_dir), "samples", npy_filename)
             os.makedirs(os.path.dirname(npy_filepath), exist_ok=True)
             
             # Convert to numpy and save
@@ -75,9 +71,9 @@ class ImageCheckpointManager(CheckpointManagerBase):
                     image_np = image.squeeze().permute(1, 2, 0).cpu().numpy()
                     pil_image = Image.fromarray((image_np * 255).astype(np.uint8), mode='RGB')
                 
-                # Save image
+                # Save image - use samples directory instead of temp
                 filename = f"sample_{i+1}.png"
-                filepath = os.path.join(self.checkpoint_dir, "temp", filename)
+                filepath = os.path.join(os.path.dirname(self.checkpoint_dir), "samples", filename)
                 
                 pil_image.save(filepath)
                 sample_paths.append(filepath)
@@ -125,8 +121,8 @@ class ImageCheckpointManager(CheckpointManagerBase):
                 y = row * img_height
                 grid_image.paste(img, (x, y))
             
-            # Save grid
-            grid_path = os.path.join(self.checkpoint_dir, "temp", "sample_grid.png")
+            # Save grid - use samples directory instead of temp
+            grid_path = os.path.join(os.path.dirname(self.checkpoint_dir), "samples", "sample_grid.png")
             grid_image.save(grid_path)
             return grid_path
             

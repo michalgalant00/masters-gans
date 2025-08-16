@@ -8,13 +8,14 @@ Implements the standard DCGAN generator with transposed convolutions.
 
 import torch
 import torch.nn as nn
-from .config import LATENT_DIM, FEATURES_G, IMAGE_SIZE, CHANNELS
+
+# Remove config import - will use passed parameters instead
 
 class DCGANGenerator(nn.Module):
     """DCGAN Generator for spectrogram generation"""
     
-    def __init__(self, latent_dim=LATENT_DIM, features_g=FEATURES_G, 
-                 channels=CHANNELS, image_size=IMAGE_SIZE):
+    def __init__(self, latent_dim=100, features_g=64, 
+                 channels=1, image_size=64):
         super(DCGANGenerator, self).__init__()
         
         self.latent_dim = latent_dim
@@ -135,8 +136,8 @@ def weights_init_generator(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-def test_generator(latent_dim=LATENT_DIM, features_g=FEATURES_G, 
-                  image_size=IMAGE_SIZE, channels=CHANNELS, device=None):
+def test_generator(latent_dim=100, features_g=64,
+                  image_size=64, channels=1, device=None):
     """Test generator with random input"""
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

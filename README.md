@@ -4,6 +4,16 @@ DCGAN implementation for spectrogram generation and WaveGAN implementation for e
 
 ## Scripts usage
 
+### getting started
+
+Create and activate a virtual environment, then install the required dependencies.
+
+```bash
+./setup_environment.ps1
+```
+
+After that test runs are recommended.
+
 ### run test dcgan pipeline
 
 ```bash
