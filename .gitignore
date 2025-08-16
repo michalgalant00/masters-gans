@@ -12,6 +12,7 @@
 !wavegan_src/**
 !.gitignore
 !README.md
+!setup_environment.ps1
 
 __pycache__/
 **/__pycache__/

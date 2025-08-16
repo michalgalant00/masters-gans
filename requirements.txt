@@ -18,3 +18,5 @@ scipy>=1.7.0
 
 # Progress bars
 tqdm>=4.60.0
+
+soundfile>=0.10.3
