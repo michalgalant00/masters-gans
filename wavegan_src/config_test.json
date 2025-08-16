@@ -1,65 +1,56 @@
 {
-  "_comment": "Test configuration - FULL production features demo with guaranteed checkpoints and metrics",
-
   "dataset": {
-    "base_path": "../01_dataset_prep/dataset-processed/final",
+    "base_path": "../01_dataset_prep/dataset-processed/final/",
     "files_path": "files-wav/",
     "metadata_file": "final-metadata.csv",
     "spectrograms_path": "spectrograms/",
     "spectrograms_metadata": "spectrograms-metadata.csv",
-    "max_files_per_class": 30,
-    "_comment_max_files_per_class": "Reduced to 30 files per class (420 total) for faster but complete demo"
+    "max_files_per_class": 10
   },
 
   "model": {
-    "latent_dim": 64,
-    "model_dim": 32,
-    "kernel_len": 25,
-    "_comment": "Smaller model dimensions for faster training but same architecture"
+    "latent_dim": 32,
+    "model_dim": 16,
+    "kernel_len": 25
   },
 
   "training": {
-    "batch_size": 8,
-    "epochs": 15,
+    "batch_size": 4,
+    "epochs": 5,
     "learning_rate": 0.0002,
     "n_critic": 3,
-    "gp_weight": 10.0,
-    "_comment": "15 epochs with smaller batch to ensure multiple checkpoints are created"
+    "gp_weight": 10.0
   },
 
   "audio": {
     "sample_rate": 22050,
-    "audio_length_seconds": 0.5,
-    "audio_length_samples": 11025,
-    "_comment": "Half-second audio for faster processing but realistic quality"
+    "audio_length_seconds": 0.25,
+    "audio_length_samples": 5512
   },
 
   "metrics_and_checkpoints": {
     "csv_write_frequency": 10,
-    "detailed_logging_frequency": 10,
+    "detailed_logging_frequency": 20,
     "emergency_checkpoint_frequency": 25,
     "milestone_checkpoint_frequency": 40,
     "milestone_epoch_frequency": 3,
     "emergency_buffer_size": 3,
-    "audio_samples_per_checkpoint": 5,
+    "audio_samples_per_checkpoint": 2,
     "best_model_improvement_threshold": 0.05,
     "key_epochs_first": 5,
-    "key_epochs_last": 5,
-    "_comment": "Very frequent checkpoints to guarantee multiple checkpoint creations and full metrics demo"
+    "key_epochs_last": 5
   },
 
   "logging": {
     "log_level": "INFO",
     "log_to_file": true,
-    "log_to_console": true,
-    "max_log_size_mb": 5,
-    "_comment": "Full production logging - both file and console for testing"
+    "log_to_console": false,
+    "max_log_size_mb": 5
   },
 
   "hardware": {
     "device": "auto",
-    "num_workers": 2,
-    "_comment": "Moderate workers for testing environment"
+    "num_workers": 2
   },
 
   "convergence": {
@@ -69,15 +60,13 @@
     "patience": 200,
     "min_improvement": 0.0003,
     "loss_explosion_threshold": 500.0,
-    "grad_norm_threshold": 5000.0,
-    "_comment": "Convergence disabled for testing to allow full training"
+    "grad_norm_threshold": 5000.0
   },
 
   "output": {
-    "base_output_dir": "output_wavegan_test_full",
+    "base_output_dir": "output_wavegan_test",
     "models_dir": "models",
     "samples_dir": "samples",
-    "metrics_dir": "metrics",
-    "_comment": "Separate output directory for full functionality test"
+    "metrics_dir": "metrics"
   }
 }

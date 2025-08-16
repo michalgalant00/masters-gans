@@ -45,7 +45,6 @@ class AudioDataset(Dataset):
                 self.audio_files = self._scan_audio_directories()
         else:
             print(f"Metadata file not found at {metadata_file}")
-            print("Scanning directories for audio files...")
             self.audio_files = self._scan_audio_directories()
         
         print(f"Found {len(self.audio_files)} audio files total")
@@ -63,8 +62,6 @@ class AudioDataset(Dataset):
         subdirs = [d for d in os.listdir(self.audio_dir) 
                   if os.path.isdir(os.path.join(self.audio_dir, d))]
         
-        print(f"Found {len(subdirs)} class directories: {subdirs}")
-        
         # Scan each subdirectory for .wav files
         for subdir in subdirs:
             subdir_path = os.path.join(self.audio_dir, subdir)
@@ -78,9 +75,6 @@ class AudioDataset(Dataset):
             for wav_file in wav_files:
                 relative_path = os.path.join(subdir, wav_file)
                 audio_files.append(relative_path)
-            
-            print(f"  - {subdir}: {len(wav_files)} files" + 
-                  (f" (limited from larger set)" if self.max_files_per_class and len(wav_files) == self.max_files_per_class else ""))
         
         return audio_files
     

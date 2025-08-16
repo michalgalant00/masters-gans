@@ -13,6 +13,11 @@ import torch.optim as optim
 import torchaudio
 import matplotlib.pyplot as plt
 import time
+import logging
+import warnings
+
+# Suppress torchaudio warnings that break progress bars
+warnings.filterwarnings("ignore", category=UserWarning, module="torchaudio")
 from tqdm import tqdm
 import os
 from torch.utils.data import DataLoader
@@ -26,6 +31,9 @@ from .checkpoints import CheckpointManager
 from .analytics import TrainingAnalyzer
 from .convergence_detector import ConvergenceDetector, ConvergenceStatus
 from .advanced_monitoring import get_resource_monitor, cleanup_resource_monitor
+
+# Configure logger for training
+logger = logging.getLogger(__name__)
 
 class WaveGANTrainer:
     """Complete training pipeline for WaveGAN with metrics and checkpoints"""
@@ -407,6 +415,9 @@ class WaveGANTrainer:
                 
                 # Check convergence status
                 if convergence_status in [ConvergenceStatus.DIVERGED, ConvergenceStatus.EARLY_STOP]:
+                    # Log to console with pbar.write for progress bar compatibility
+                    pbar.write(f"⏹️  Training stopped due to convergence: {convergence_status.value}")
+                    # Log to file
                     self.config.logger.warning(f"Training stopped due to convergence: {convergence_status.value}")
                     pbar.close()
                     break
@@ -420,8 +431,15 @@ class WaveGANTrainer:
                 
                 # Detailed logging and metrics collection
                 if iteration % metrics_config['detailed_logging_frequency'] == 0:
+                    # Log detailed stats to file only (console shows progress bar)
                     self.config.logger.info(f"Epoch {epoch+1}/{self.epochs}, Iter {iteration}: D_loss={d_loss.item():.6f}, G_loss={g_loss.item():.6f}")
                     self.config.logger.info(f"Gradient norms - G: {g_grad_norm:.6f}, D: {d_grad_norm:.6f}")
+                    
+                    # Log tensor stats for debugging
+                    if hasattr(self.config, 'log_tensor_stats'):
+                        # Log real and fake audio tensor statistics
+                        self.config.log_tensor_stats(f"real_audio_epoch_{epoch}_iter_{iteration}", real_audio)
+                        self.config.log_tensor_stats(f"fake_audio_epoch_{epoch}_iter_{iteration}", fake_audio)
                     
                     # Collect detailed metrics
                     self.metrics.log_iteration_metrics(
@@ -433,6 +451,10 @@ class WaveGANTrainer:
                         g_grad_norm=g_grad_norm,
                         gradient_penalty=gp.item()
                     )
+                
+                # Log rotation check
+                if hasattr(self.config, 'check_and_rotate_log'):
+                    self.config.check_and_rotate_log()
                 
                 # Note: Checkpoint logic moved to end of epoch to match requirements
                 
