@@ -22,7 +22,6 @@ class SpectrogramDataset(Dataset):
         self.spectrograms_dir = spectrograms_dir
         self.image_size = image_size
         self.spectrogram_files = []
-        self.use_full_path = False  # Default to using relative paths
         self.max_files = max_files  # Limit number of files for testing
         
         # Check if metadata file exists and try to use it
@@ -30,40 +29,30 @@ class SpectrogramDataset(Dataset):
             try:
                 self.metadata = pd.read_csv(metadata_file)
                 
-                # Try different possible column names for spectrogram files
-                # Priority: full paths first, then just filenames
-                path_columns = ['spectrogram_path', 'full_path', 'path']
-                file_columns = ['spectrogram_file', 'filename', 'file', 'spectrogram_filename', 'image_file']
-                
-                spectrogram_column = None
-                use_full_path = False
-                
-                # First try columns with full paths
-                for col in path_columns:
-                    if col in self.metadata.columns:
-                        spectrogram_column = col
-                        use_full_path = True
-                        break
-                
-                # If no path column found, try filename columns
-                if not spectrogram_column:
-                    for col in file_columns:
-                        if col in self.metadata.columns:
-                            spectrogram_column = col
-                            use_full_path = False
-                            break
-                
-                if spectrogram_column:
-                    self.spectrogram_files = self.metadata[spectrogram_column].tolist()
-                    self.use_full_path = use_full_path
-                    print(f"Loaded {len(self.spectrogram_files)} files from metadata column '{spectrogram_column}'")
-                    print(f"Using {'full paths' if use_full_path else 'relative filenames'}")
-                else:
-                    print(f"Warning: No spectrogram filename column found in metadata.")
-                    print(f"Available columns: {list(self.metadata.columns)}")
-                    print("Scanning directories instead...")
+                # Strategy: Build paths from spectrograms_dir + class_directory + spectrogram_file
+                # This matches the actual directory structure
+                if 'spectrogram_file' in self.metadata.columns and 'class_directory' in self.metadata.columns:
+                    # Build full paths: spectrograms_dir/class_directory/spectrogram_file
+                    self.spectrogram_files = [
+                        os.path.join(str(row['class_directory']), str(row['spectrogram_file']))
+                        for _, row in self.metadata.iterrows()
+                    ]
+                    print(f"✅ Loaded {len(self.spectrogram_files)} files from metadata")
+                    print(f"   Using: spectrograms_dir/class_directory/spectrogram_file")
+                    print(f"   Base directory: {spectrograms_dir}")
+                    print(f"   Example: {self.spectrogram_files[0] if self.spectrogram_files else 'N/A'}")
+                    
+                elif 'spectrogram_file' in self.metadata.columns:
+                    # Fallback: just use filenames, scan directories
+                    print("⚠️  'class_directory' column not found in metadata")
+                    print("   Scanning directories to find file locations...")
                     self.spectrogram_files = self._scan_spectrogram_directories()
-                    self.use_full_path = False
+                    
+                else:
+                    print(f"❌ Required column 'spectrogram_file' not found in metadata.")
+                    print(f"   Available columns: {list(self.metadata.columns)}")
+                    print("   Scanning directories instead...")
+                    self.spectrogram_files = self._scan_spectrogram_directories()
                     
             except Exception as e:
                 print(f"Error reading metadata file: {e}")
@@ -132,23 +121,11 @@ class SpectrogramDataset(Dataset):
         return len(self.spectrogram_files)
     
     def __getitem__(self, idx):
-        if hasattr(self, 'use_full_path') and self.use_full_path:
-            # Use full path from metadata, but fix relative paths
-            spectrogram_path = self.spectrogram_files[idx]
-            
-            # Fix relative paths that start with "./"
-            if spectrogram_path.startswith('./'):
-                # Replace "./" with the actual base path
-                spectrogram_path = spectrogram_path[2:]  # Remove "./"
-                # Prepend the correct base path
-                spectrogram_path = os.path.join('../01_dataset_prep/', spectrogram_path)
-                
-            # Normalize path separators for current OS
-            spectrogram_path = os.path.normpath(spectrogram_path)
-        else:
-            # Combine directory with filename
-            spectrogram_path = os.path.join(self.spectrograms_dir, self.spectrogram_files[idx])
+        # Combine spectrograms_dir with relative path (class_directory/spectrogram_file)
+        spectrogram_path = os.path.join(self.spectrograms_dir, self.spectrogram_files[idx])
         
+        # Normalize path separators for current OS
+        spectrogram_path = os.path.normpath(spectrogram_path)
         try:
             # Check file extension and load accordingly
             if spectrogram_path.lower().endswith('.npy'):
